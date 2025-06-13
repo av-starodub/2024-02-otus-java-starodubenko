@@ -1,0 +1,2 @@
+rootProject.name = 'otusJavaHomework'
+include 'HW01-gradle'
