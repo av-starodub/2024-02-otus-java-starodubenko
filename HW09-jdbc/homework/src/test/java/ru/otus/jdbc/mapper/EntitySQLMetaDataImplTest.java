@@ -2,6 +2,8 @@ package ru.otus.jdbc.mapper;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import java.lang.reflect.Field;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,11 @@ class EntitySQLMetaDataImplTest {
 
     private EntitySQLMetaData entitySQLMetaDataManager;
 
+    private EntityClassMetaData<Client> entityClassMetaDataClient;
+
     @BeforeEach
     void init() {
-        var entityClassMetaDataClient = new EntityClassMetaDataImpl<>(Client.class);
+        entityClassMetaDataClient = new EntityClassMetaDataImpl<>(Client.class);
         entitySQLMetaDataClient = new EntitySQLMetaDataImpl<>(entityClassMetaDataClient);
         var entityClassMetaDataManager = new EntityClassMetaDataImpl<>(Manager.class);
         entitySQLMetaDataManager = new EntitySQLMetaDataImpl<>(entityClassMetaDataManager);
@@ -33,24 +37,27 @@ class EntitySQLMetaDataImplTest {
     @Test
     @DisplayName("should create sql 'select all' correctly")
     void getSelectAllSqlTest() {
-        var actualSelectByIdSql = entitySQLMetaDataClient.getSelectAllSql();
-        var expectedSelectByIdSql = "select * from client";
-        assertThat(actualSelectByIdSql).isEqualToIgnoringCase(expectedSelectByIdSql);
+        var actualSelectAllSql = entitySQLMetaDataClient.getSelectAllSql();
+        var expectedColumns = entityClassMetaDataClient.getAllFields().stream()
+                .map(Field::getName)
+                .collect(Collectors.joining(", "));
+        var expectedSelectAllSql = "select %s from client".formatted(expectedColumns);
+        assertThat(actualSelectAllSql).isEqualToIgnoringCase(expectedSelectAllSql);
     }
 
     @Test
     @DisplayName("should create sql 'insert' correctly")
     void getInsertSqlTest() {
         var actualInsertSql = entitySQLMetaDataManager.getInsertSql();
-        var expectedSelectByIdSql = "insert into manager(label, param1) values (?, ?)";
-        assertThat(actualInsertSql).isEqualToIgnoringCase(expectedSelectByIdSql);
+        var expectedInsertSql = "insert into manager(label, param1) values (?, ?)";
+        assertThat(actualInsertSql).isEqualToIgnoringCase(expectedInsertSql);
     }
 
     @Test
     @DisplayName("should create sql 'update' correctly")
     void getUpdateSqlTest() {
-        var actualInsertSql = entitySQLMetaDataManager.getUpdateSql();
-        var expectedSelectByIdSql = "update manager set label = ?, param1 = ? where no = ?";
-        assertThat(actualInsertSql).isEqualToIgnoringCase(expectedSelectByIdSql);
+        var actualUpdateSql = entitySQLMetaDataManager.getUpdateSql();
+        var expectedUpdateSql = "update manager set label = ?, param1 = ? where no = ?";
+        assertThat(actualUpdateSql).isEqualToIgnoringCase(expectedUpdateSql);
     }
 }

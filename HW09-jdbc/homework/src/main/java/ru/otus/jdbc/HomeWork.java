@@ -30,6 +30,7 @@ public class HomeWork {
         var flyway = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("classpath:/db/migration")
+                .cleanDisabled(false)
                 .load();
 
         try {
