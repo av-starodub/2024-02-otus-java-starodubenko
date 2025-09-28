@@ -1,25 +1,17 @@
 package ru.otus.jdbc.mapper;
 
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import ru.otus.core.repository.DataTemplate;
 import ru.otus.core.repository.DataTemplateException;
 import ru.otus.core.repository.executor.DbExecutor;
-import ru.otus.jdbc.mapper.excrption.EntityClassMetaDataException;
 
 /**
  * Сохраняет объект в базу, читает объект из базы
@@ -32,38 +24,14 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
 
     private final EntityClassMetaData<T> entityClassMetaData;
 
-    private final List<Method> gettersWithoutId;
-
-    private final Method idGetter;
+    private final PersistablePropertyAccessors propertyAccessors;
 
     public DataTemplateJdbc(
             DbExecutor dbExecutor, EntitySQLMetaData entitySQLMetaData, EntityClassMetaData<T> entityClassMetaData) {
         this.dbExecutor = dbExecutor;
         this.entitySQLMetaData = entitySQLMetaData;
         this.entityClassMetaData = entityClassMetaData;
-        try {
-            var readersByName = getReadersByName(entityClassMetaData);
-            var idFieldName = entityClassMetaData.getIdField().getName();
-            this.idGetter = Optional.ofNullable(readersByName.get(idFieldName))
-                    .orElseThrow(
-                            () -> new EntityClassMetaDataException("No public getter for id field: " + idFieldName));
-            this.gettersWithoutId = entityClassMetaData.getFieldsWithoutId().stream()
-                    .map(f -> Optional.ofNullable(readersByName.get(f.getName()))
-                            .orElseThrow(() ->
-                                    new EntityClassMetaDataException("No public getter for field: " + f.getName())))
-                    .toList();
-        } catch (Exception e) {
-            throw new DataTemplateException(e);
-        }
-    }
-
-    private Map<String, Method> getReadersByName(EntityClassMetaData<T> entityClassMetaData)
-            throws IntrospectionException {
-        var beanInfo =
-                Introspector.getBeanInfo(entityClassMetaData.getConstructor().getDeclaringClass());
-        return Arrays.stream(beanInfo.getPropertyDescriptors())
-                .filter(pd -> pd.getReadMethod() != null)
-                .collect(Collectors.toMap(PropertyDescriptor::getName, PropertyDescriptor::getReadMethod));
+        propertyAccessors = PersistablePropertyAccessors.forClass(entityClassMetaData);
     }
 
     @Override
@@ -111,6 +79,7 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
     public void update(Connection connection, T entity) {
         try {
             var params = new ArrayList<>(collectFieldValues(entity));
+            var idGetter = propertyAccessors.idGetter();
             params.add(idGetter.invoke(entity));
             dbExecutor.executeStatement(connection, entitySQLMetaData.getUpdateSql(), params);
         } catch (Exception e) {
@@ -129,7 +98,7 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
     private List<Object> collectFieldValues(T entity) {
         try {
             var fieldValues = new ArrayList<>();
-            for (var getter : gettersWithoutId) {
+            for (var getter : propertyAccessors.gettersWithoutId()) {
                 fieldValues.add(getter.invoke(entity));
             }
             return fieldValues;
@@ -141,7 +110,8 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
     private T createEntity(ResultSet rs)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
         var fields = entityClassMetaData.getAllFields();
-        var entityFieldValues = fields.stream().map(field -> getColumn(rs, field)).toArray();
+        var entityFieldValues =
+                fields.stream().map(field -> getColumn(rs, field)).toArray();
         var entityConstructor = entityClassMetaData.getConstructor();
         return entityConstructor.newInstance(entityFieldValues);
     }
