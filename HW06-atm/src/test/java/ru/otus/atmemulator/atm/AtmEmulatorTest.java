@@ -22,7 +22,7 @@ import ru.otus.atmemulator.service.NoteBoxService;
 import ru.otus.atmemulator.strategy.NoteDispenseStrategy;
 import ru.otus.atmemulator.testutil.TestUtil;
 
-class ATMTest {
+class AtmEmulatorTest {
 
     private static final int REQUIRED_SUM = 100;
 
@@ -32,14 +32,14 @@ class ATMTest {
 
     private static final String EXPECTED_ERROR_MESSAGE = "Error. Operation can be performed";
 
-    private ATM atm;
+    private AtmEmulator atmEmulator;
 
     private NoteBoxService noteBoxService;
 
     @BeforeEach
     void setUp() {
         noteBoxService = Mockito.mock(MoneyBoxService.class);
-        atm = new ATM(noteBoxService);
+        atmEmulator = new AtmEmulator(noteBoxService);
     }
 
     @Test
@@ -50,7 +50,7 @@ class ATMTest {
         var nominalCount = Map.of(RUB_5000, 1, RUB_1000, 1, RUB_500, 5, RUB_100, 1);
         var money = TestUtil.createMoney(nominalCount);
 
-        var thrown = catchThrowable(() -> atm.putMoney(money));
+        var thrown = catchThrowable(() -> atmEmulator.putMoney(money));
 
         assertThat(thrown)
                 .isInstanceOf(AtmException.class)
@@ -65,7 +65,8 @@ class ATMTest {
         when(noteBoxService.getMoney(anyInt(), any(NoteDispenseStrategy.class)))
                 .thenThrow(new NotValidSumException("The amount must be a multiple"));
 
-        var thrown = catchThrowable(() -> atm.getMoney(INVALID_REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
+        var thrown =
+                catchThrowable(() -> atmEmulator.getMoney(INVALID_REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
 
         assertThat(thrown)
                 .isInstanceOf(AtmException.class)
@@ -80,7 +81,7 @@ class ATMTest {
         when(noteBoxService.getMoney(anyInt(), any(NoteDispenseStrategy.class)))
                 .thenThrow(new NotEnoughMoneyException("Not enough money"));
 
-        Throwable thrown = catchThrowable(() -> atm.getMoney(REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
+        Throwable thrown = catchThrowable(() -> atmEmulator.getMoney(REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
 
         assertThat(thrown)
                 .isInstanceOf(AtmException.class)
@@ -95,7 +96,7 @@ class ATMTest {
         when(noteBoxService.getMoney(anyInt(), any(NoteDispenseStrategy.class)))
                 .thenThrow(new NotEnoughBanknotesException("Not enough banknotes"));
 
-        var thrown = catchThrowable(() -> atm.getMoney(REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
+        var thrown = catchThrowable(() -> atmEmulator.getMoney(REQUIRED_SUM, NoteDispenseStrategy.MINIMUM_NOTES));
 
         assertThat(thrown)
                 .isInstanceOf(AtmException.class)

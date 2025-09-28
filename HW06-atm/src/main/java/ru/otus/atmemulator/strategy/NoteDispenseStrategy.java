@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import ru.otus.atmemulator.denomination.Note;
 
 /**
@@ -46,9 +45,7 @@ public enum NoteDispenseStrategy {
         }
         final Key key = Key.of(notes);
         return lruCache.computeIfAbsent(key, k -> {
-            var ordered = notes.stream()
-                    .sorted(noteComparator)
-                    .toList();
+            var ordered = notes.stream().sorted(noteComparator).toList();
             return List.copyOf(ordered);
         });
     }
@@ -71,10 +68,7 @@ public enum NoteDispenseStrategy {
 
         static Key of(Set<Note> notes) {
             var sortedNominalValues =
-                    notes.stream()
-                            .mapToInt(Note::getNominalValue)
-                            .sorted()
-                            .toArray();
+                    notes.stream().mapToInt(Note::getNominalValue).sorted().toArray();
             return new Key(sortedNominalValues);
         }
 
@@ -93,6 +87,5 @@ public enum NoteDispenseStrategy {
         public int hashCode() {
             return hash;
         }
-
     }
 }
