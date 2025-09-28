@@ -74,6 +74,11 @@ public class HomeWork {
                     .orElseThrow(() -> new RuntimeException("Manager not found, id:" + managerSecond.getNo()));
             log.info("managerSecondSelected:{}", managerSecondSelected);
 
+            var updatedManager =
+                    new Manager(managerSecondSelected.getNo(), managerSecondSelected.getLabel(), "Updated");
+            var updatedManagerSecond = dbServiceManager.saveManager(updatedManager);
+            log.info("updatedManagerSecond:{}", updatedManagerSecond);
+
             var allManagers = dbServiceManager.findAll();
             log.info("allManagers:{}", allManagers);
 

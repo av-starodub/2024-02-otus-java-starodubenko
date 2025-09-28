@@ -5,6 +5,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import ru.otus.core.repository.DataTemplate;
@@ -30,11 +32,38 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
 
     private final EntityClassMetaData<T> entityClassMetaData;
 
+    private final List<Method> gettersWithoutId;
+
+    private final Method idGetter;
+
     public DataTemplateJdbc(
             DbExecutor dbExecutor, EntitySQLMetaData entitySQLMetaData, EntityClassMetaData<T> entityClassMetaData) {
         this.dbExecutor = dbExecutor;
         this.entitySQLMetaData = entitySQLMetaData;
         this.entityClassMetaData = entityClassMetaData;
+        try {
+            var readersByName = getReadersByName(entityClassMetaData);
+            var idFieldName = entityClassMetaData.getIdField().getName();
+            this.idGetter = Optional.ofNullable(readersByName.get(idFieldName))
+                    .orElseThrow(
+                            () -> new EntityClassMetaDataException("No public getter for id field: " + idFieldName));
+            this.gettersWithoutId = entityClassMetaData.getFieldsWithoutId().stream()
+                    .map(f -> Optional.ofNullable(readersByName.get(f.getName()))
+                            .orElseThrow(() ->
+                                    new EntityClassMetaDataException("No public getter for field: " + f.getName())))
+                    .toList();
+        } catch (Exception e) {
+            throw new DataTemplateException(e);
+        }
+    }
+
+    private Map<String, Method> getReadersByName(EntityClassMetaData<T> entityClassMetaData)
+            throws IntrospectionException {
+        var beanInfo =
+                Introspector.getBeanInfo(entityClassMetaData.getConstructor().getDeclaringClass());
+        return Arrays.stream(beanInfo.getPropertyDescriptors())
+                .filter(pd -> pd.getReadMethod() != null)
+                .collect(Collectors.toMap(PropertyDescriptor::getName, PropertyDescriptor::getReadMethod));
     }
 
     @Override
@@ -65,13 +94,13 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
                         throw new DataTemplateException(e);
                     }
                 })
-                .orElseThrow(() -> new RuntimeException("Unexpected error"));
+                .orElseThrow(() -> new DataTemplateException("Unexpected error"));
     }
 
     @Override
-    public long insert(Connection connection, T client) {
+    public long insert(Connection connection, T entity) {
         try {
-            var fieldValues = getFieldValues(client);
+            var fieldValues = collectFieldValues(entity);
             return dbExecutor.executeStatement(connection, entitySQLMetaData.getInsertSql(), fieldValues);
         } catch (Exception e) {
             throw new DataTemplateException(e);
@@ -79,9 +108,11 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
     }
 
     @Override
-    public void update(Connection connection, T client) {
+    public void update(Connection connection, T entity) {
         try {
-            dbExecutor.executeStatement(connection, entitySQLMetaData.getUpdateSql(), getFieldValues(client));
+            var params = new ArrayList<>(collectFieldValues(entity));
+            params.add(idGetter.invoke(entity));
+            dbExecutor.executeStatement(connection, entitySQLMetaData.getUpdateSql(), params);
         } catch (Exception e) {
             throw new DataTemplateException(e);
         }
@@ -95,23 +126,14 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
         }
     }
 
-    private List<Object> getFieldValues(T entity) throws IllegalAccessException {
+    private List<Object> collectFieldValues(T entity) {
         try {
-            var beanInfo = Introspector.getBeanInfo(entity.getClass());
-            var readersByName = Arrays.stream(beanInfo.getPropertyDescriptors())
-                    .filter(pd -> pd.getReadMethod() != null)
-                    .collect(Collectors.toMap(PropertyDescriptor::getName, PropertyDescriptor::getReadMethod));
-
             var fieldValues = new ArrayList<>();
-            for (var field : entityClassMetaData.getFieldsWithoutId()) {
-                var getter = readersByName.get(field.getName());
-                if (getter == null) {
-                    throw new EntityClassMetaDataException("No public getter for field: " + field.getName());
-                }
+            for (var getter : gettersWithoutId) {
                 fieldValues.add(getter.invoke(entity));
             }
             return fieldValues;
-        } catch (IntrospectionException | InvocationTargetException e) {
+        } catch (Exception e) {
             throw new DataTemplateException(e);
         }
     }
@@ -119,8 +141,7 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
     private T createEntity(ResultSet rs)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
         var fields = entityClassMetaData.getAllFields();
-        var entityFieldValues =
-                fields.stream().map(field -> getColumn(rs, field)).toArray();
+        var entityFieldValues = fields.stream().map(field -> getColumn(rs, field)).toArray();
         var entityConstructor = entityClassMetaData.getConstructor();
         return entityConstructor.newInstance(entityFieldValues);
     }
