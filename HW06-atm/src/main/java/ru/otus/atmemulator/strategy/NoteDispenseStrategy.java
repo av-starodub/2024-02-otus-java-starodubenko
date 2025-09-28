@@ -1,7 +1,6 @@
 package ru.otus.atmemulator.strategy;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,12 +30,12 @@ public enum NoteDispenseStrategy {
 
     NoteDispenseStrategy(Comparator<Note> comparator) {
         noteComparator = comparator;
-        lruCache = Collections.synchronizedMap(new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
+        lruCache = new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Key, List<Note>> eldest) {
                 return size() > MAX_CACHE_SIZE;
             }
-        });
+        };
     }
 
     public List<Note> getOrderedNotes(Set<Note> notes) {
