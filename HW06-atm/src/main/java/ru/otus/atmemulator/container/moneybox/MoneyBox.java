@@ -6,13 +6,13 @@ import java.util.stream.IntStream;
 import ru.otus.atmemulator.container.AbstractNoteContainer;
 import ru.otus.atmemulator.container.NoteBox;
 import ru.otus.atmemulator.container.NoteContainer;
-import ru.otus.atmemulator.container.builder.AbstractNoteContainerBuilder;
+import ru.otus.atmemulator.container.builder.NoteBuilder;
 import ru.otus.atmemulator.container.money.Money;
 import ru.otus.atmemulator.denomination.Note;
 
 /**
  * The MoneyBox class represents a container designed to store and manage banknotes.
- * It extends the {@code AbstractNoteContainer} class and implements the {@code NoteBox} interface,
+ * It extends the {@link  AbstractNoteContainer} class and implements the {@code NoteBox} interface,
  * providing storage and operations for handling a collection of banknotes while enforcing certain constraints.
  * <p>
  * The MoneyBox includes features such as
@@ -20,7 +20,7 @@ import ru.otus.atmemulator.denomination.Note;
  * - The ability to store, extract, and calculate amounts from the contained notes.
  * - A minimum nominal value of stored banknotes automatically derived from the collection.
  * <p>
- * It is instantiated using an internal {@code MoneyBoxBuilder} to ensure proper initialization
+ * It is instantiated using an internal {@link  NoteBuilder} to ensure proper initialization
  * of the banknotes and constraints.
  */
 public class MoneyBox extends AbstractNoteContainer implements NoteBox {
@@ -41,29 +41,15 @@ public class MoneyBox extends AbstractNoteContainer implements NoteBox {
                 .orElse(0);
     }
 
-    public static MoneyBoxBuilder builder(int ceilSize) {
-        return new MoneyBoxBuilder(ceilSize);
-    }
-
-    public static class MoneyBoxBuilder extends AbstractNoteContainerBuilder<MoneyBox> {
-
-        private final int ceilSize;
-
-        public MoneyBoxBuilder(int ceilSize) {
-            this.ceilSize = ceilSize;
-        }
-
-        @Override
-        protected MoneyBox getInstance(Map<Note, Deque<Note>> banknotes) {
-            return new MoneyBox(banknotes, ceilSize);
-        }
+    public static NoteBuilder<MoneyBox> builder(int cSize) {
+        return new NoteBuilder<>(banknotes -> new MoneyBox(banknotes, cSize));
     }
 
     @Override
     public int putNotes(NoteContainer money) {
         var notesToAdd = money.getNumberOfNotes();
         notesToAdd.forEach((note, number) -> {
-            var stackToAdd = AbstractNoteContainerBuilder.collectNotes(note, number);
+            var stackToAdd = NoteBuilder.collectNotes(note, number);
             this.banknotes.merge(note, stackToAdd, this::addStack);
             amount += note.getNominalValue() * number;
         });

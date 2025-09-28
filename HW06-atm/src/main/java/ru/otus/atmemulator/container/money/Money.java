@@ -4,7 +4,7 @@ import java.util.Deque;
 import java.util.Map;
 import ru.otus.atmemulator.container.AbstractNoteContainer;
 import ru.otus.atmemulator.container.NoteContainer;
-import ru.otus.atmemulator.container.builder.AbstractNoteContainerBuilder;
+import ru.otus.atmemulator.container.builder.NoteBuilder;
 import ru.otus.atmemulator.denomination.Note;
 
 /**
@@ -14,8 +14,8 @@ import ru.otus.atmemulator.denomination.Note;
  *
  * <h2>Behavior:</h2>
  * - Computes the total monetary value of the contained banknotes upon initialization.
- * - Utilizes a builder pattern through the {@link MoneyBuilder} to facilitate the creation
- * of {@link Money} instances with specified banknotes.
+ * - Utilizes a builder pattern through the {@link NoteBuilder} to facilitate the creation
+ * of Money instances with specified banknotes.
  * <p>
  * This class is immutable and thread-safe as its fields are final and no state changes after initialization.
  */
@@ -28,21 +28,13 @@ public class Money extends AbstractNoteContainer {
         amount = computeAmount(this.banknotes);
     }
 
-    public static MoneyBuilder builder() {
-        return new MoneyBuilder();
+    public static NoteBuilder<Money> builder() {
+        return new NoteBuilder<>(Money::new);
     }
 
     @Override
     public int getAmount() {
         return amount;
-    }
-
-    public static class MoneyBuilder extends AbstractNoteContainerBuilder<Money> {
-
-        @Override
-        protected Money getInstance(Map<Note, Deque<Note>> banknotes) {
-            return new Money(banknotes);
-        }
     }
 
     @Override
