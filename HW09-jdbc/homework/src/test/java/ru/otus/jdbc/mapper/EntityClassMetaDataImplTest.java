@@ -23,7 +23,7 @@ class EntityClassMetaDataImplTest {
     void getConstructorTest() throws NoSuchMethodException {
         var entityClassMetaDataClient = new EntityClassMetaDataImpl<>(Client.class);
         var actualConstructor = entityClassMetaDataClient.getConstructor();
-        var expectedConstructor = Client.class.getConstructor(Long.class, String.class);
+        var expectedConstructor = Client.class.getConstructor();
         assertThat(actualConstructor).isEqualTo(expectedConstructor);
     }
 

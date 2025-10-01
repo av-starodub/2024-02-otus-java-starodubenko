@@ -52,11 +52,10 @@ public class EntityClassMetaDataImpl<T> implements EntityClassMetaData<T> {
     }
 
     private Constructor<T> getConstructor(Class<T> clazz) {
-        var fieldTypes = allFields.stream().map(Field::getType).toArray(Class[]::new);
         try {
-            return clazz.getDeclaredConstructor(fieldTypes);
+            return clazz.getConstructor();
         } catch (NoSuchMethodException e) {
-            throw new EntityClassMetaDataException(e);
+            throw new EntityClassMetaDataException("Public no-args constructor is required for " + clazz.getName());
         }
     }
 

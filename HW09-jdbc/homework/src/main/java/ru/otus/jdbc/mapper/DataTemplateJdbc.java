@@ -1,7 +1,6 @@
 package ru.otus.jdbc.mapper;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -39,7 +38,7 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
         return dbExecutor.executeSelect(connection, entitySQLMetaData.getSelectByIdSql(), List.of(id), rs -> {
             try {
                 if (rs.next()) {
-                    return createEntity(rs);
+                    return mapToEntity(rs);
                 }
                 return null;
             } catch (Exception e) {
@@ -55,7 +54,7 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
                     var entityList = new ArrayList<T>();
                     try {
                         while (rs.next()) {
-                            entityList.add(createEntity(rs));
+                            entityList.add(mapToEntity(rs));
                         }
                         return entityList;
                     } catch (Exception e) {
@@ -107,12 +106,24 @@ public class DataTemplateJdbc<T> implements DataTemplate<T> {
         }
     }
 
-    private T createEntity(ResultSet rs)
-            throws InvocationTargetException, InstantiationException, IllegalAccessException {
-        var fields = entityClassMetaData.getAllFields();
-        var entityFieldValues =
-                fields.stream().map(field -> getColumn(rs, field)).toArray();
-        var entityConstructor = entityClassMetaData.getConstructor();
-        return entityConstructor.newInstance(entityFieldValues);
+    private T mapToEntity(ResultSet rs) {
+        final T entity;
+
+        try {
+            entity = entityClassMetaData.getConstructor().newInstance();
+
+            var idValue = getColumn(rs, entityClassMetaData.getIdField());
+            propertyAccessors.idSetter().invoke(entity, idValue);
+
+            for (var entry : propertyAccessors.settersByFieldWithoutId().entrySet()) {
+                var field = entry.getKey();
+                var setter = entry.getValue();
+                setter.invoke(entity, getColumn(rs, field));
+            }
+        } catch (Exception e) {
+            throw new DataTemplateException("Failed to map ResultSet to entity", e);
+        }
+
+        return entity;
     }
 }

@@ -8,4 +8,8 @@ public class DataTemplateException extends RuntimeException {
     public DataTemplateException(String message) {
         super(message);
     }
+
+    public DataTemplateException(String message, Exception ex) {
+        super(message, ex);
+    }
 }
