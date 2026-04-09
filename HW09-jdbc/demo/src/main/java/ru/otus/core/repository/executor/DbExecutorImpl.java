@@ -17,13 +17,15 @@ public class DbExecutorImpl implements DbExecutor {
             for (var idx = 0; idx < params.size(); idx++) {
                 pst.setObject(idx + 1, params.get(idx));
             }
-            pst.executeUpdate();
+            var updatedRows = pst.executeUpdate();
             try (var rs = pst.getGeneratedKeys()) {
-                rs.next();
-                return rs.getInt(1);
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
             }
+            return updatedRows;
         } catch (SQLException ex) {
-            throw new DataBaseOperationException("executeInsert error", ex);
+            throw new DataBaseOperationException("executeStatement error", ex);
         }
     }
 
