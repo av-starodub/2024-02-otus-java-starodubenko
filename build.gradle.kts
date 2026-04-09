@@ -2,6 +2,7 @@ import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 import name.remal.gradle_plugins.sonarlint.SonarLintExtension
 import org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
+import org.gradle.process.CommandLineArgumentProvider
 
 plugins {
     idea
@@ -110,6 +111,18 @@ subprojects {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    val mockitoAgent by configurations.creating {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isVisible = false
+    }
+
+    dependencies {
+        add(mockitoAgent.name, "org.mockito:mockito-core") {
+            isTransitive = false
+        }
+    }
+
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
         options.compilerArgs.addAll(listOf("-parameters", "-Xlint:all,-serial,-processing"))
@@ -143,6 +156,9 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        jvmArgumentProviders += CommandLineArgumentProvider {
+            listOf("-javaagent:${mockitoAgent.singleFile.absolutePath}")
+        }
         testLogging.showExceptions = true
         reports {
             junitXml.required.set(true)

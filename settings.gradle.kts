@@ -6,6 +6,8 @@ include("HW03-annotations")
 include("HW04-gc")
 include("HW05-aop")
 include("HW07-solid")
+include("HW09-jdbc:demo")
+include("HW09-jdbc:homework")
 include("HW10-jdbc:demo")
 include("HW10-jdbc:homework")
 include("HW03-stream_api")
@@ -40,3 +42,6 @@ pluginManagement {
         id("com.diffplug.spotless") version spotless
     }
 }
+
+include("HW09")
+include("HW09-jdbc")
