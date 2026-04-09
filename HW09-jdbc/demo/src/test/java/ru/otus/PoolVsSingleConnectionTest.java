@@ -26,7 +26,7 @@ class PoolVsSingleConnectionTest {
 
     // will be started before and stopped after each test method
     @Container
-    private final PostgreSQLContainer<?> postgresqlContainer = new PostgreSQLContainer<>("postgres:12-alpine")
+    private final PostgreSQLContainer<?> postgresqlContainer = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("testDataBase")
             .withUsername("owner")
             .withPassword("secret")
